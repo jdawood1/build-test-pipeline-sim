@@ -1,0 +1,20 @@
+modules:
+  - name: core
+    payload: "src@abc123"
+    seconds: 0.1
+  - name: utils
+    payload: "src@def456"
+    seconds: 0.1
+
+tests:
+  # Passing: expected digest matches module "core"
+  - name: unit-core
+    module: core
+    seconds: 0.05
+    expected_digest: "eecb8c98e4000f66a0276a1f4f7f3d86db3cce2ea6ca2a09e7b65e5c3b0bf80f"
+
+  # Failing: intentionally wrong expected digest for demonstration
+  - name: unit-utils
+    module: utils
+    seconds: 0.05
+    expected_digest: "WRONG_DIGEST"
