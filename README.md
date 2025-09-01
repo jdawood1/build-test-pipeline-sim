@@ -1,6 +1,6 @@
 # Build & Test Pipeline Simulator
 
-[![CI](https://github.com/jdawood1/build-test-pipeline-sim/actions/workflows/ci.yml/badge.svg)](https://github.com/jdawood1/build-test-pipeline-sim/actions)
+[![CI](https://github.com/jdawood1/build-test-pipeline-sim/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jdawood1/build-test-pipeline-sim/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Config‑driven build & test pipeline simulator.  
