@@ -1,18 +1,40 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
 
 jobs:
   python:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-      - run: python -m pip install -U pip
-      - run: python -m pip install -r requirements.txt
-      - run: python -m pip install black ruff pytest
-      - run: python -m ruff check . --output-format=github || true
-      - run: python -m black --check .
-      - run: pytest -q
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install package + dev extras
+        run: |
+          python -m pip install -U pip
+          # installs your package and the dev tools (pytest, ruff, black, mypy)
+          python -m pip install -e .[dev]
+          # optional: enable Parquet exports during tests
+          # python -m pip install -e .[parquet]
+
+      - name: Lint (ruff)
+        run: python -m ruff check . --output-format=github || true
+
+      - name: Format (black)
+        run: python -m black --check .
+
+      - name: Type check (mypy)
+        run: python -m mypy sim
+
+      - name: Tests
+        run: pytest -q
