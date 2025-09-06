@@ -23,6 +23,7 @@ dev = [
     "black>=24.4",
     "mypy>=1.10",
     "pre-commit>=3.7",
+    "types-PyYAML",
 ]
 parquet = [
     "pandas>=2.2",
@@ -32,7 +33,7 @@ parquet = [
 [project.scripts]
 sim = "sim.cli:cli"
 
-# (Optional) ensure setuptools discovers the package
+# Ensure setuptools discovers the package
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["sim*"]

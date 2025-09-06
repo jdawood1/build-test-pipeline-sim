@@ -72,15 +72,16 @@ def _do_work(name: str, payload: str, seconds: float) -> tuple[str, float]:
     return digest, time.time() - t0
 
 
-def _load_config(config_path: str) -> dict:
+def _load_config(config_path: str) -> dict[str, Any]:
     raw = Path(config_path).read_text(encoding="utf-8")
-    cfg = yaml.safe_load(raw) or {}
+    cfg: Any = yaml.safe_load(raw) or {}
     if not isinstance(cfg, dict):
         raise NotMappingError()
-    return cfg
+    # Tell mypy this is a mapping with string keys
+    return dict(cfg)
 
 
-def _validate_modules(mods: list[dict]) -> None:
+def _validate_modules(mods: list[dict[str, Any]]) -> None:
     names = [str(m.get("name", "")).strip() for m in mods]
     if any(not n for n in names):
         raise EmptyModuleNameError()
@@ -96,7 +97,7 @@ def _validate_modules(mods: list[dict]) -> None:
             raise NegativeModuleSecondsError(m.get("name"))
 
 
-def _validate_tests(tests: list[dict], mod_names: set[str]) -> None:
+def _validate_tests(tests: list[dict[str, Any]], mod_names: set[str]) -> None:
     for t in tests:
         name = str(t.get("name", "")).strip()
         if not name:
@@ -114,30 +115,30 @@ def validate_config(config_path: str) -> None:
     cfg = _load_config(config_path)
     modules = list(cfg.get("modules", []) or [])
     tests = list(cfg.get("tests", []) or [])
-    _validate_modules(modules)
-    _validate_tests(tests, {str(m.get("name")) for m in modules})
+    _validate_modules(modules)  # type: ignore[arg-type]
+    _validate_tests(tests, {str(m.get("name")) for m in modules})  # type: ignore[arg-type]
 
 
-def explain_config(config_path: str, *, include_digests: bool = False) -> dict:
+def explain_config(config_path: str, *, include_digests: bool = False) -> dict[str, Any]:
     """
     Return a concise plan of what would run. If include_digests=True,
     compute and include each module's expected digest (no sleeping).
     """
     cfg = _load_config(config_path)
-    modules = list(cfg.get("modules", []) or [])
-    tests = list(cfg.get("tests", []) or [])
+    modules: list[dict[str, Any]] = list(cfg.get("modules", []) or [])
+    tests: list[dict[str, Any]] = list(cfg.get("tests", []) or [])
 
-    mod_list: list[dict] = []
+    mod_list: list[dict[str, Any]] = []
     for m in modules:
         name = str(m.get("name"))
         payload = str(m.get("payload"))
         seconds = float(m.get("seconds", 0.2))
-        item = {"name": name, "payload": payload, "seconds": seconds}
+        item: dict[str, Any] = {"name": name, "payload": payload, "seconds": seconds}
         if include_digests:
             item["expected_digest"] = _digest(name, payload)
         mod_list.append(item)
 
-    test_list = [
+    test_list: list[dict[str, Any]] = [
         {
             "name": t.get("name"),
             "module": t.get("module"),
@@ -151,7 +152,9 @@ def explain_config(config_path: str, *, include_digests: bool = False) -> dict:
 
 
 # =================================== Output helpers ===================================
-def _try_parquet_exports(out: Path, telemetry_rows: list[dict], results_obj: dict) -> None:
+def _try_parquet_exports(
+    out: Path, telemetry_rows: list[dict[str, Any]], results_obj: dict[str, Any]
+) -> None:
     """Best-effort Parquet exports using pandas+pyarrow if available."""
     try:
         import pandas as pd  # type: ignore
@@ -172,10 +175,12 @@ def _try_parquet_exports(out: Path, telemetry_rows: list[dict], results_obj: dic
         )
 
 
-def _write_html_report(out: Path, results_obj: dict, telemetry_rows: list[dict]) -> None:
+def _write_html_report(
+    out: Path, results_obj: dict[str, Any], telemetry_rows: list[dict[str, Any]]
+) -> None:
     from html import escape
 
-    tests = results_obj.get("tests", [])
+    tests: list[dict[str, Any]] = results_obj.get("tests", [])
     # Build test rows safely (escape user text)
     test_rows = "".join(
         (
@@ -278,25 +283,25 @@ def run_pipeline(config_path: str, out_dir: str, *, dry_run: bool = False) -> in
         print(json.dumps({"error": "config_error", "message": str(e)}))
         return 2
 
-    modules = list(cfg.get("modules", []) or [])
-    tests = list(cfg.get("tests", []) or [])
+    modules: list[dict[str, Any]] = list(cfg.get("modules", []) or [])
+    tests: list[dict[str, Any]] = list(cfg.get("tests", []) or [])
 
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
 
     telemetry_csv = out / "telemetry.csv"
     ndjson_path = out / "events.ndjson"
-    artifacts: dict[str, Any] = {}
+    artifacts: dict[str, str] = {}
     failures = 0
-    results: list[dict] = []
-    telemetry_rows: list[dict] = []
+    results: list[dict[str, Any]] = []
+    telemetry_rows: list[dict[str, Any]] = []
 
     # Dry-run: write headers + empty results
     if dry_run:
         with telemetry_csv.open("w", newline="", encoding="utf-8") as f:
             csv.writer(f).writerow(["stage", "name", "duration_s", "meta"])
         ndjson_path.write_text("", encoding="utf-8")
-        results_obj = {"dry_run": True, "artifacts": {}, "tests": [], "failures": 0}
+        results_obj: dict[str, Any] = {"dry_run": True, "artifacts": {}, "tests": [], "failures": 0}
         (out / "results.json").write_text(json.dumps(results_obj, indent=2), encoding="utf-8")
         _write_html_report(out, results_obj, telemetry_rows)
         return 0
@@ -343,7 +348,7 @@ def run_pipeline(config_path: str, out_dir: str, *, dry_run: bool = False) -> in
             if not ok:
                 failures += 1
 
-    results_obj = {"failures": failures, "tests": results, "artifacts": artifacts}
+    results_obj: dict[str, Any] = {"failures": failures, "tests": results, "artifacts": artifacts}
     (out / "results.json").write_text(json.dumps(results_obj, indent=2), encoding="utf-8")
 
     # Optional Parquet
