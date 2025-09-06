@@ -77,7 +77,6 @@ def _load_config(config_path: str) -> dict[str, Any]:
     cfg: Any = yaml.safe_load(raw) or {}
     if not isinstance(cfg, dict):
         raise NotMappingError()
-    # Tell mypy this is a mapping with string keys
     return dict(cfg)
 
 
@@ -115,8 +114,8 @@ def validate_config(config_path: str) -> None:
     cfg = _load_config(config_path)
     modules = list(cfg.get("modules", []) or [])
     tests = list(cfg.get("tests", []) or [])
-    _validate_modules(modules)  # type: ignore[arg-type]
-    _validate_tests(tests, {str(m.get("name")) for m in modules})  # type: ignore[arg-type]
+    _validate_modules(modules)
+    _validate_tests(tests, {str(m.get("name")) for m in modules})
 
 
 def explain_config(config_path: str, *, include_digests: bool = False) -> dict[str, Any]:
@@ -157,17 +156,14 @@ def _try_parquet_exports(
 ) -> None:
     """Best-effort Parquet exports using pandas+pyarrow if available."""
     try:
-        import pandas as pd  # type: ignore
+        import pandas as pd  # removed: type: ignore
 
-        # telemetry parquet
         if telemetry_rows:
             pd.DataFrame(telemetry_rows).to_parquet(out / "telemetry.parquet", index=False)
 
-        # results parquet
         tests_df = pd.DataFrame(results_obj.get("tests", []))
         tests_df.to_parquet(out / "results.parquet", index=False)
-    except Exception as e:  # pragma: no cover (optional path)
-        # Emit a small hint file if parquet failed
+    except Exception as e:  # pragma: no cover
         (out / "parquet_export_failed.txt").write_text(
             f"Parquet export skipped or failed: {type(e).__name__}: {e}\n"
             "Install pandas+pyarrow (see requirements-dev.txt) to enable.",
@@ -181,7 +177,6 @@ def _write_html_report(
     from html import escape
 
     tests: list[dict[str, Any]] = results_obj.get("tests", [])
-    # Build test rows safely (escape user text)
     test_rows = "".join(
         (
             f"<tr>"
@@ -195,7 +190,6 @@ def _write_html_report(
         for t in tests
     )
 
-    # Build telemetry rows
     tele_rows = "".join(
         (
             f"<tr>"
@@ -212,7 +206,6 @@ def _write_html_report(
     failed = sum(1 for t in tests if not t.get("ok"))
     artifacts_cnt = len(results_obj.get("artifacts", {}))
 
-    # Wrap long CSS to satisfy E501
     html = f"""<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
@@ -296,12 +289,15 @@ def run_pipeline(config_path: str, out_dir: str, *, dry_run: bool = False) -> in
     results: list[dict[str, Any]] = []
     telemetry_rows: list[dict[str, Any]] = []
 
+    # Define once; assign in branches (avoids mypy redefinition)
+    results_obj: dict[str, Any]
+
     # Dry-run: write headers + empty results
     if dry_run:
         with telemetry_csv.open("w", newline="", encoding="utf-8") as f:
             csv.writer(f).writerow(["stage", "name", "duration_s", "meta"])
         ndjson_path.write_text("", encoding="utf-8")
-        results_obj: dict[str, Any] = {"dry_run": True, "artifacts": {}, "tests": [], "failures": 0}
+        results_obj = {"dry_run": True, "artifacts": {}, "tests": [], "failures": 0}
         (out / "results.json").write_text(json.dumps(results_obj, indent=2), encoding="utf-8")
         _write_html_report(out, results_obj, telemetry_rows)
         return 0
@@ -348,13 +344,11 @@ def run_pipeline(config_path: str, out_dir: str, *, dry_run: bool = False) -> in
             if not ok:
                 failures += 1
 
-    results_obj: dict[str, Any] = {"failures": failures, "tests": results, "artifacts": artifacts}
+    # Single (unannotated) assignment — no redefinition
+    results_obj = {"failures": failures, "tests": results, "artifacts": artifacts}
     (out / "results.json").write_text(json.dumps(results_obj, indent=2), encoding="utf-8")
 
-    # Optional Parquet
     _try_parquet_exports(out, telemetry_rows, results_obj)
-
-    # HTML report
     _write_html_report(out, results_obj, telemetry_rows)
 
     return 1 if failures else 0
