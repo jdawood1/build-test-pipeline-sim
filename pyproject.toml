@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "build-test-pipeline-sim"
+version = "0.1.0"
+description = "Config-driven build & test pipeline simulator"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "John Dawood" }]
+dependencies = [
+    "click>=8.1",
+    "pyyaml>=6.0",
+]
+
+# pip install .[dev] or .[parquet]
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2",
+    "ruff>=0.5",
+    "black>=24.4",
+    "mypy>=1.10",
+    "pre-commit>=3.7",
+]
+parquet = [
+    "pandas>=2.2",
+    "pyarrow>=16.0",
+]
+
+[project.scripts]
+sim = "sim.cli:cli"
+
+# (Optional) ensure setuptools discovers the package
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["sim*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.format]
+preview = true
+
+[tool.ruff.lint]
+select = ["E","F","I","UP","B","SIM","PL","TRY","N"]
+ignore = ["PLR2004"]  # magic numbers fine in tiny sim
+
+[tool.ruff.lint.per-file-ignores]
+"sim/runner.py" = ["PLR0915"]  # function has many statements by design
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = true
+disallow_untyped_defs = true

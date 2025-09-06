@@ -11,7 +11,7 @@ tests:
   - name: unit-core
     module: core
     seconds: 0.05
-    expected_digest: "eecb8c98e4000f66a0276a1f4f7f3d86db3cce2ea6ca2a09e7b65e5c3b0bf80f"
+    expected_digest: "4fc41e5669eafc53d839cd3f1f8c5fa4b5406f85ea35f94da8a4d9151e7523de"
 
   # Failing: intentionally wrong expected digest for demonstration
   - name: unit-utils
